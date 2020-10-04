@@ -11,17 +11,19 @@ const { dbConnection } = require('./database/config');
 const app = express();
 
 // configurar cors
+// ciertos dominios pueden hacer peticiones a su backend
 app.use(cors());
+
+// Lectura y parseo del body
+app.use(express.json());
 
 // database
 dbConnection();
 
-app.get('/', (req, res)=>{
-    res.json({
-        ok: true,
-        msg: 'hola mundo'
-    })
-})
+// Rutas
+// Usando middlewares para que cuando pase por aqui rediriga al archivo de rutas
+app.use('/api/usuarios',require('./routes/usuarios'))
+
 
 app.listen( process.env.PORT, ()=>{
     console.log('Servidor corriendo en puerto'+process.env.PORT);
