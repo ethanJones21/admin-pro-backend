@@ -22,7 +22,9 @@ dbConnection();
 
 // Rutas
 // Usando middlewares para que cuando pase por aqui rediriga al archivo de rutas
-app.use('/api/usuarios',require('./routes/usuarios'))
+app.use('/api/usuarios',require('./routes/usuarios'));
+
+app.use('/api/login',require('./routes/auth'));
 
 
 app.listen( process.env.PORT, ()=>{

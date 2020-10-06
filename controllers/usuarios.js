@@ -2,6 +2,7 @@ const { response } = require('express');//para status, json metodos
 const bcrypt = require('bcryptjs');
 
 const Usuario = require('../models/usuario');
+const { generarJWT } = require('../helpers/jwt');
 
 const getUsuarios = async(req, res)=>{
 
@@ -9,8 +10,8 @@ const getUsuarios = async(req, res)=>{
 
     res.json({
         ok: true,
-        msg: 'get Usuarios',
-        usuarios
+        usuarios,
+        uid: req.uid //esto es para ver que usuario hizo la peticion
     })
 }
 
@@ -38,12 +39,15 @@ const crearUsuario = async(req, res = response)=>{
         // Guardar usuario
         await usuario.save();
 
+        const token = await generarJWT( usuario.id );
+
         // se puede enviar una unica vez
         res.json({
             ok: true,
-            msg: 'Usuario creado',
-            usuario
-        })
+            usuario,
+            token
+        });
+
     } catch (error) {
         res.status(500).json({
             ok: false,
@@ -68,12 +72,11 @@ const actualizarUsuario = async(req, res = response)=>{
         }
 
         // Actualizaciones
-        const campos = req.body;
+        // destructuring: al hacer esto el password, google e email no seran tomados en variable campos
+        const { password, google, email, ...campos} = req.body;
 
-        if(usuarioDB.email === req.body.email) {//para evitar conflictos con el email unico
-            delete campos.email;
-        }else{
-            const existeEmail = await Usuario.findOne({email: req.body.email});
+        if(usuarioDB.email !== email) {//para evitar conflictos con el email unico
+            const existeEmail = await Usuario.findOne({ email });
             if(existeEmail) { //si quieres actualizar tu correo pero ya existe un correo de otra persona
                 return res.status(400).json({
                     ok: false,
@@ -82,8 +85,7 @@ const actualizarUsuario = async(req, res = response)=>{
             }
         }
 
-        delete campos.password;
-        delete campos.google;
+        campos.email = email; //agrega el email
 
         // const usuarioActualizado = await Usuario.findByIdAndUpdate(uid,campos); te regresa los datos anteriores que enviaste pero si se guarda el nuevo en mongodb
         const usuarioActualizado = await Usuario.findByIdAndUpdate(uid,campos, {new: true});
@@ -95,6 +97,7 @@ const actualizarUsuario = async(req, res = response)=>{
             usuario: usuarioActualizado
         })
     } catch (error) {
+        console.log(error);
         res.status(500).json({
             ok: false,
             msg: 'Error inesperado... revisar logs'
@@ -102,10 +105,39 @@ const actualizarUsuario = async(req, res = response)=>{
     }
 }
 
+const borrarUsuario = async(req, res=response)=>{
+    
+    const uid = req.params.id;
+    
+    try {
 
+        const usuarioDB = await Usuario.findById(uid);
+
+        if( !usuarioDB ){
+            return res.status(404).json({
+                ok: false,
+                msg: 'No existe un usuario con ese id'
+            })
+        }
+
+        await Usuario.findByIdAndDelete(uid);
+
+        res.json({
+            ok: true,
+            msg: 'Usuario eliminado'
+        })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            ok: false,
+            msg: 'Error inesperado'
+        })
+    }
+}
 
 module.exports = {
     getUsuarios,
     crearUsuario,
-    actualizarUsuario
+    actualizarUsuario,
+    borrarUsuario
 }
